@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Donation Alert</string>
+	<string name="notification_listener_description">Donation Alert reads UPI payment notifications to show on-screen alerts and send to StreamElements. No data is collected or shared.</string>
+</resources>

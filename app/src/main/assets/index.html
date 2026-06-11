@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NotifyAll</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #121212; color: #FFFFFF; padding: 16px; padding-bottom: 80px; }
+        .app-bar { background: #3700B3; margin: -16px -16px 16px -16px; padding: 16px; padding-top: 48px; padding-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .app-bar h1 { font-size: 24px; font-weight: bold; }
+        .status-card { background: #1E1E1E; border-radius: 12px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #F44336; }
+        .status-card.active { border-left-color: #4CAF50; }
+        .status-label { font-size: 12px; color: #888; letter-spacing: 1px; }
+        .status-text { font-size: 28px; font-weight: bold; margin-top: 4px; }
+        .status-text.inactive { color: #F44336; }
+        .status-text.active { color: #4CAF50; }
+        .app-count { font-size: 14px; color: #888; margin-top: 8px; }
+        .menu-card { background: #1E1E1E; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+        .menu-card:active { background: #2A2A2A; transform: scale(0.98); }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .menu-title { font-size: 16px; font-weight: bold; }
+        .menu-arrow { font-size: 18px; color: #888; }
+        .menu-subtitle { font-size: 14px; color: #888; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        .btn-start { background: #4CAF50; color: white; }
+        .btn-stop { background: #F44336; color: white; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .search-box { width: 100%; padding: 12px; background: #333; border: none; border-radius: 8px; color: white; margin-bottom: 16px; }
+        .search-box::placeholder { color: #888; }
+        .app-list { max-height: 500px; overflow-y: auto; }
+        .app-item { display: flex; align-items: center; padding: 12px; background: #1E1E1E; margin-bottom: 8px; border-radius: 8px; }
+        .app-icon { width: 40px; height: 40px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
+        .app-info { flex: 1; }
+        .app-name { font-weight: bold; }
+        .app-package { font-size: 11px; color: #888; }
+        .app-checkbox { width: 22px; height: 22px; cursor: pointer; margin-left: 8px; }
+        .regex-checkbox { width: 18px; height: 18px; cursor: pointer; margin-left: 8px; }
+        .regex-label { font-size: 10px; color: #888; margin-left: 8px; }
+        .design-preview { background: #1E1E1E; border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center; }
+        .notification-preview { background: #2C2C2C; border-radius: 12px; padding: 16px; max-width: 300px; margin: 0 auto; }
+        .preview-app { font-size: 12px; color: #888; margin-bottom: 4px; }
+        .preview-amount { font-size: 24px; font-weight: bold; color: #4CAF50; }
+        .preview-name { font-size: 14px; margin-top: 4px; }
+        .preview-note { font-size: 12px; color: #888; margin-top: 4px; }
+        .preview-raw { font-size: 13px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+        .design-input { width: 100%; padding: 10px; background: #333; border: none; border-radius: 8px; color: white; margin-bottom: 12px; }
+        .design-label { font-size: 12px; color: #888; margin-bottom: 4px; display: block; }
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; background: #1E1E1E; padding: 16px; border-radius: 12px; margin-bottom: 12px; }
+        .toggle-label { font-size: 15px; font-weight: 500; }
+        .toggle-sub { font-size: 12px; color: #888; margin-top: 2px; }
+        .toggle { width: 50px; height: 26px; background: #555; border-radius: 13px; cursor: pointer; position: relative; transition: 0.2s; flex-shrink: 0; }
+        .toggle.active { background: #4CAF50; }
+        .toggle::after { content: ''; width: 22px; height: 22px; background: white; border-radius: 11px; position: absolute; top: 2px; left: 3px; transition: 0.2s; }
+        .toggle.active::after { left: 25px; }
+        .webhook-url { width: 100%; padding: 12px; background: #333; border: none; border-radius: 8px; color: white; margin-bottom: 12px; font-size: 14px; }
+        .webhook-url::placeholder { color: #666; }
+        .toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .back-btn { font-size: 24px; cursor: pointer; padding: 8px; }
+        .toolbar-title { font-size: 20px; font-weight: bold; }
+        .permission-banner { background: #F44336; padding: 12px; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .permission-text { font-size: 13px; }
+        .permission-btn { background: white; color: #F44336; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .button-group { display: flex; gap: 12px; margin-top: 16px; margin-bottom: 16px; }
+        .section-title { font-size: 11px; color: #888; letter-spacing: 1px; text-transform: uppercase; margin: 16px 0 8px 0; }
+        .info-text { font-size: 12px; color: #666; margin-bottom: 12px; line-height: 1.5; }
+        .log-card { background: #1E1E1E; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+        .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .log-title { font-size: 11px; color: #888; letter-spacing: 1px; text-transform: uppercase; }
+        .log-clear-btn { font-size: 11px; color: #888; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: #2A2A2A; }
+        .log-empty { font-size: 13px; color: #555; text-align: center; padding: 16px 0; }
+        .log-entry { background: #252525; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; border-left: 3px solid #3700B3; }
+        .log-entry-meta { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .log-entry-app { font-size: 11px; font-weight: bold; color: #BB86FC; }
+        .log-entry-time { font-size: 10px; color: #555; }
+        .log-entry-body { font-size: 13px; line-height: 1.4; word-break: break-word; white-space: pre-wrap; color: #EEEEEE; }
+        .check-row { display: flex; align-items: center; gap: 12px; }
+        hr { border-color: #333; margin: 8px 0; }
+    </style>
+</head>
+<body>
+
+<!-- Main Menu Screen -->
+<div id="menuScreen" class="screen active">
+    <div class="app-bar">
+        <h1>NotifyAll</h1>
+    </div>
+
+    <div id="permissionBanner" style="display:none;" class="permission-banner">
+        <span class="permission-text">⚠️ Permissions required</span>
+        <span class="permission-btn" onclick="fixPermissions()">FIX</span>
+    </div>
+
+    <div id="statusCard" class="status-card">
+        <div class="status-label">SERVICE STATUS</div>
+        <div id="statusText" class="status-text inactive">INACTIVE</div>
+        <div id="appCount" class="app-count">0 apps selected</div>
+    </div>
+
+    <div class="menu-card" onclick="showScreen('selectorScreen')">
+        <div class="menu-header">
+            <span class="menu-title">📱 SELECT APPS</span>
+            <span class="menu-arrow">→</span>
+        </div>
+        <div class="menu-subtitle">Choose which apps to monitor</div>
+    </div>
+
+    <div class="menu-card" onclick="showScreen('designScreen')">
+        <div class="menu-header">
+            <span class="menu-title">🎨 NOTIFICATION DESIGN</span>
+            <span class="menu-arrow">→</span>
+        </div>
+        <div class="menu-subtitle">Customize look and feel</div>
+    </div>
+
+    <div class="menu-card" onclick="showScreen('webhookScreen')">
+        <div class="menu-header">
+            <span class="menu-title">🌐 STREAMELEMENTS WEBHOOK</span>
+            <span class="menu-arrow">→</span>
+        </div>
+        <div class="menu-subtitle">Forward payments to stream alerts</div>
+    </div>
+
+    <div class="menu-card" onclick="testNotification()">
+        <div class="menu-header">
+            <span class="menu-title">📋 TEST NOTIFICATION</span>
+            <span class="menu-arrow">→</span>
+        </div>
+        <div class="menu-subtitle">Add a test entry to the log</div>
+    </div>
+
+    <div class="menu-card" onclick="resendLastNotification()">
+        <div class="menu-header">
+            <span class="menu-title">🔄 RESEND LAST NOTIFICATION</span>
+            <span class="menu-arrow">→</span>
+        </div>
+        <div class="menu-subtitle">Show last captured notification again (log only)</div>
+    </div>
+
+    <div class="button-group">
+        <button class="btn btn-start" onclick="startService()">▶ START SERVICE</button>
+        <button class="btn btn-stop" onclick="stopService()">⏹ STOP SERVICE</button>
+    </div>
+
+    <!-- Notification Log -->
+    <div class="log-card">
+        <div class="log-header">
+            <span class="log-title">📋 Last Captured Notifications</span>
+            <span class="log-clear-btn" onclick="clearLog()">CLEAR</span>
+        </div>
+        <div id="notifLog">
+            <div class="log-empty">No notifications captured yet.<br>Start the service to begin monitoring.</div>
+        </div>
+    </div>
+</div>
+
+<!-- App Selector Screen -->
+<div id="selectorScreen" class="screen">
+    <div class="toolbar">
+        <span class="back-btn" onclick="showScreen('menuScreen')">←</span>
+        <span class="toolbar-title">Select Apps</span>
+    </div>
+    <input type="text" id="searchInput" class="search-box" placeholder="Search apps..." onkeyup="filterApps()">
+    <div class="button-group">
+        <button class="btn" style="background:#555;" onclick="selectAll()">SELECT ALL</button>
+        <button class="btn btn-start" onclick="saveSelectedApps()">SAVE</button>
+    </div>
+    <div id="appList" class="app-list"></div>
+    <div class="info-text" style="margin-top: 16px;">
+        💡 <strong>Regex column:</strong> Enable regex parsing for this app (amount/name/note extraction).<br>
+        Disabled = show raw notification text in overlay.
+    </div>
+</div>
+
+<!-- Design Screen -->
+<div id="designScreen" class="screen">
+    <div class="toolbar">
+        <span class="back-btn" onclick="showScreen('menuScreen')">←</span>
+        <span class="toolbar-title">Design & Display</span>
+    </div>
+
+    <div class="toggle-row">
+        <div>
+            <div class="toggle-label">Show on-screen overlay</div>
+            <div class="toggle-sub">Display notification on top of other apps</div>
+        </div>
+        <div id="overlayToggle" class="toggle" onclick="toggleOverlay()"></div>
+    </div>
+
+    <div class="toggle-row">
+        <div>
+            <div class="toggle-label">Overlay Content Mode</div>
+            <div class="toggle-sub">Raw: show full text | Parsed: show amount/name/note</div>
+        </div>
+        <div id="overlayModeToggle" class="toggle" onclick="toggleOverlayMode()"></div>
+    </div>
+
+    <div class="section-title">Overlay Appearance</div>
+
+    <div class="design-preview">
+        <div class="notification-preview" id="livePreview">
+            <div class="preview-app">Google Pay</div>
+            <div class="preview-amount">₹245.00</div>
+            <div class="preview-name">Rajesh Kumar</div>
+            <div class="preview-note">Dinner payment</div>
+        </div>
+    </div>
+
+    <label class="design-label">Background Color</label>
+    <input type="color" id="bgColor" class="design-input" value="#2C2C2C" onchange="updatePreview()">
+
+    <label class="design-label">Text Color</label>
+    <input type="color" id="textColor" class="design-input" value="#FFFFFF" onchange="updatePreview()">
+
+    <label class="design-label">Amount Color</label>
+    <input type="color" id="amountColor" class="design-input" value="#4CAF50" onchange="updatePreview()">
+
+    <label class="design-label">Border Radius (px)</label>
+    <input type="range" id="borderRadius" min="0" max="30" value="12" onchange="updatePreview()">
+
+    <button class="btn btn-start" style="margin-top: 16px;" onclick="saveDesign()">SAVE DESIGN</button>
+</div>
+
+<!-- Webhook Screen -->
+<div id="webhookScreen" class="screen">
+    <div class="toolbar">
+        <span class="back-btn" onclick="showScreen('menuScreen')">←</span>
+        <span class="toolbar-title">StreamElements</span>
+    </div>
+
+    <div class="toggle-row">
+        <div>
+            <div class="toggle-label">Enable Webhook</div>
+            <div class="toggle-sub">Send payments to StreamElements alerts</div>
+        </div>
+        <div id="webhookToggle" class="toggle" onclick="toggleWebhook()"></div>
+    </div>
+
+    <div class="section-title">Credentials</div>
+    <p class="info-text">Find your Account ID and JWT Token at streamelements.com → Dashboard → Account → Channels</p>
+
+    <label class="design-label">Account ID</label>
+    <input type="text" id="accountId" class="webhook-url" placeholder="e.g. 5f3e2a1b9c8d7e6f5a4b3c2d">
+
+    <label class="design-label">JWT Token</label>
+    <input type="password" id="jwtToken" class="webhook-url" placeholder="Paste your JWT token here">
+
+    <button class="btn btn-start" style="margin-top: 8px;" onclick="saveWebhook()">💾 SAVE SETTINGS</button>
+    <button class="btn" style="margin-top: 8px; background:#3700B3;" onclick="testWebhook()">🧪 TEST WEBHOOK</button>
+</div>
+
+<script>
+    let installedApps = [];
+    let selectedApps = [];
+    let regexApps = {};
+    let serviceActive = false;
+    let notifLog = [];
+    const MAX_LOG = 20;
+
+    // ── Load Data ───────────────────────────────────────────────────────────────
+
+    function loadData() {
+        let saved = Android.getSettings("selected_apps");
+        if (saved && saved !== "null") {
+            try { selectedApps = JSON.parse(saved); } catch(e) { selectedApps = []; }
+        }
+
+        document.getElementById("accountId").value = Android.getSettings("streamelements_account_id") || "";
+        document.getElementById("jwtToken").value  = Android.getSettings("streamelements_jwt") || "";
+
+        let webhookEnabled = Android.getWebhookEnabled() === "true";
+        if (webhookEnabled) document.getElementById("webhookToggle").classList.add("active");
+
+        let overlayEnabled = Android.getShowOverlay() !== "false";
+        if (overlayEnabled) document.getElementById("overlayToggle").classList.add("active");
+
+        let overlayMode = Android.getOverlayMode();
+        setOverlayMode(overlayMode);
+
+        loadRegexApps();
+
+        let design = Android.getSettings("design");
+        if (design && design !== "null") {
+            try {
+                let d = JSON.parse(design);
+                document.getElementById("bgColor").value     = d.bgColor     || "#2C2C2C";
+                document.getElementById("textColor").value   = d.textColor   || "#FFFFFF";
+                document.getElementById("amountColor").value = d.amountColor || "#4CAF50";
+                document.getElementById("borderRadius").value= d.borderRadius|| "12";
+                updatePreview();
+            } catch(e) {}
+        }
+
+        updateAppCount();
+    }
+
+    function loadRegexApps() {
+        let saved = Android.getRegexApps();
+        if (saved && saved !== "null") {
+            try { regexApps = JSON.parse(saved); } catch(e) { regexApps = {}; }
+        }
+    }
+
+    function loadApps() {
+        let appsJson = Android.getInstalledApps();
+        try { installedApps = JSON.parse(appsJson); } catch(e) { installedApps = []; }
+        renderAppList();
+    }
+
+    function renderAppList() {
+        let searchTerm = document.getElementById("searchInput")?.value.toLowerCase() || "";
+        let filtered = installedApps.filter(app =>
+            app.name.toLowerCase().includes(searchTerm) ||
+            app.packageName.toLowerCase().includes(searchTerm)
+        );
+
+        let html = "";
+        filtered.forEach(app => {
+            let isChecked = selectedApps.includes(app.packageName);
+            let regexEnabled = regexApps[app.packageName] === true;
+            html += `
+                <div class="app-item">
+                    <div class="app-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#4CAF50">
+                            <path d="M6,18c0,0.55 0.45,1 1,1h1v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5L11,19h2v3.5c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5L16,19h1c0.55,0 1,-0.45 1,-1L18,8L6,8v10zM3.5,8C2.67,8 2,8.67 2,9.5v7c0,0.83 0.67,1.5 1.5,1.5S5,17.33 5,16.5v-7C5,8.67 4.33,8 3.5,8zM20.5,8c-0.83,0 -1.5,0.67 -1.5,1.5v7c0,0.83 0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5v-7c0,-0.83 -0.67,-1.5 -1.5,-1.5zM15.53,2.16l1.19,-1.18c0.16,-0.16 0.16,-0.41 0,-0.57 -0.16,-0.16 -0.41,-0.16 -0.57,0l-1.22,1.22C14.23,1.25 13.62,1 13,1c-0.62,0 -1.23,0.25 -1.68,0.66l-1.22,-1.22c-0.16,-0.16 -0.41,-0.16 -0.57,0 -0.16,0.16 -0.16,0.41 0,0.57l1.19,1.18C10.23,2.59 10,3.28 10,4h6c0,-0.72 -0.23,-1.41 -0.47,-1.84z"/>
+                        </svg>
+                    </div>
+                    <div class="app-info">
+                        <div class="app-name">${escapeHtml(app.name)}</div>
+                        <div class="app-package">${escapeHtml(app.packageName)}</div>
+                    </div>
+                    <div class="check-row">
+                        <input type="checkbox" class="app-checkbox" data-pkg="${app.packageName}"
+                            ${isChecked ? "checked" : ""}
+                            onchange="toggleApp('${app.packageName}', this.checked)">
+                        <div style="display:flex; flex-direction:column; align-items:center;">
+                            <input type="checkbox" class="regex-checkbox" data-pkg="${app.packageName}"
+                                ${regexEnabled ? "checked" : ""}
+                                onchange="toggleRegex('${app.packageName}', this.checked)">
+                            <span class="regex-label">Regex</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById("appList").innerHTML = html || "<div style='text-align:center;padding:20px;color:#888;'>No apps found</div>";
+    }
+
+    function toggleApp(pkg, checked) {
+        if (checked) {
+            if (!selectedApps.includes(pkg)) selectedApps.push(pkg);
+        } else {
+            selectedApps = selectedApps.filter(p => p !== pkg);
+        }
+        updateAppCount();
+    }
+
+    function toggleRegex(pkg, checked) {
+        regexApps[pkg] = checked;
+        Android.setRegexForApp(pkg, checked);
+    }
+
+    function selectAll() {
+        installedApps.forEach(app => {
+            if (!selectedApps.includes(app.packageName)) selectedApps.push(app.packageName);
+        });
+        renderAppList();
+        updateAppCount();
+    }
+
+    function saveSelectedApps() {
+        Android.saveSettings("selected_apps", JSON.stringify(selectedApps));
+        Android.showToast("Saved " + selectedApps.length + " apps");
+        updateAppCount();
+        showScreen("menuScreen");
+    }
+
+    function updateAppCount() {
+        let count = selectedApps.length;
+        document.getElementById("appCount").innerText = count + " app" + (count !== 1 ? "s" : "") + " selected";
+    }
+
+    function filterApps() { renderAppList(); }
+
+    // ── Design ────────────────────────────────────────────────────────────────
+
+    function updatePreview() {
+        let bg     = document.getElementById("bgColor").value;
+        let text   = document.getElementById("textColor").value;
+        let amount = document.getElementById("amountColor").value;
+        let radius = document.getElementById("borderRadius").value;
+
+        let preview = document.getElementById("livePreview");
+        preview.style.backgroundColor = bg;
+        preview.style.color = text;
+        preview.style.borderRadius = radius + "px";
+        preview.querySelector(".preview-amount").style.color = amount;
+    }
+
+    function saveDesign() {
+        let design = {
+            bgColor:      document.getElementById("bgColor").value,
+            textColor:    document.getElementById("textColor").value,
+            amountColor:  document.getElementById("amountColor").value,
+            borderRadius: document.getElementById("borderRadius").value
+        };
+        Android.saveSettings("design", JSON.stringify(design));
+        Android.showToast("Design saved");
+    }
+
+    function toggleOverlay() {
+        let toggle = document.getElementById("overlayToggle");
+        toggle.classList.toggle("active");
+        let isOn = toggle.classList.contains("active");
+        Android.setShowOverlay(isOn);
+        Android.showToast(isOn ? "Overlay enabled" : "Overlay disabled");
+    }
+
+    function toggleOverlayMode() {
+        let toggle = document.getElementById("overlayModeToggle");
+        toggle.classList.toggle("active");
+        let mode = toggle.classList.contains("active") ? "raw" : "parsed";
+        Android.setOverlayMode(mode);
+        Android.showToast("Overlay mode: " + (mode === "raw" ? "Raw text (full content)" : "Parsed (amount/name/note)"));
+    }
+
+    function setOverlayMode(mode) {
+        let toggle = document.getElementById("overlayModeToggle");
+        if (mode === "raw") toggle.classList.add("active");
+        else toggle.classList.remove("active");
+    }
+
+    function setRegexApps(jsonStr) {
+        try { regexApps = JSON.parse(jsonStr); } catch(e) { regexApps = {}; }
+        renderAppList();
+    }
+
+    // ── Webhook ───────────────────────────────────────────────────────────────
+
+    function toggleWebhook() {
+        let toggle = document.getElementById("webhookToggle");
+        toggle.classList.toggle("active");
+        let isOn = toggle.classList.contains("active");
+        Android.setWebhookEnabled(isOn);
+    }
+
+    function saveWebhook() {
+        let accountId = document.getElementById("accountId").value.trim();
+        let jwt = document.getElementById("jwtToken").value.trim();
+        let enabled = document.getElementById("webhookToggle").classList.contains("active");
+
+        Android.saveSettings("streamelements_account_id", accountId);
+        Android.saveSettings("streamelements_jwt", jwt);
+        Android.setWebhookEnabled(enabled);
+
+        Android.showToast("Webhook settings saved");
+    }
+
+    function testWebhook() {
+        let accountId = document.getElementById("accountId").value.trim();
+        let jwt = document.getElementById("jwtToken").value.trim();
+        let enabled = document.getElementById("webhookToggle").classList.contains("active");
+
+        if (!enabled) { Android.showToast("Enable webhook first"); return; }
+        if (!accountId) { Android.showToast("Enter Account ID"); return; }
+        if (!jwt) { Android.showToast("Enter JWT Token"); return; }
+
+        let testData = {
+            appName: "NotifyAll",
+            amount: "₹100.00",
+            name: "Test User",
+            note: "Test webhook",
+            title: "Test Donation"
+        };
+        Android.testWebhookOnly(JSON.stringify(testData));
+        Android.showToast("Test sent - check Logcat");
+    }
+
+    // ── Service ───────────────────────────────────────────────────────────────
+
+    function testNotification() {
+        let testData = {
+            appName: "Test App",
+            amount: "₹245.00",
+            name: "Test User",
+            note: "This is a test notification",
+            title: "Test Notification",
+            fullText: "This is a test notification.\nAmount: ₹245.00\nFrom: Test User\nNote: Testing the system"
+        };
+        Android.triggerTestNotification(JSON.stringify(testData));
+    }
+
+    function resendLastNotification() {
+        Android.resendLastNotification();
+    }
+
+    function startService()  { Android.startNotificationService(); }
+    function stopService()   { Android.stopNotificationService(); }
+
+    // ── Navigation ────────────────────────────────────────────────────────────
+
+    function showScreen(screenId) {
+        document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+        document.getElementById(screenId).classList.add("active");
+        if (screenId === "selectorScreen") loadApps();
+    }
+
+    function updateServiceStatus(active) {
+        serviceActive = active;
+        let statusText = document.getElementById("statusText");
+        let statusCard = document.getElementById("statusCard");
+        if (active) {
+            statusText.innerText = "ACTIVE";
+            statusText.className = "status-text active";
+            statusCard.classList.add("active");
+        } else {
+            statusText.innerText = "INACTIVE";
+            statusText.className = "status-text inactive";
+            statusCard.classList.remove("active");
+        }
+    }
+
+    function setPermissions(hasOverlay, hasNotification) {
+        document.getElementById("permissionBanner").style.display =
+            (!hasOverlay || !hasNotification) ? "flex" : "none";
+    }
+
+    function fixPermissions() {
+        Android.requestOverlayPermission();
+        Android.requestNotificationAccess();
+    }
+
+    function escapeHtml(text) {
+        if (!text) return "";
+        return text.replace(/&/g, "&amp;")
+                   .replace(/</g, "&lt;")
+                   .replace(/>/g, "&gt;")
+                   .replace(/"/g, "&quot;");
+    }
+
+    // ── Notification Log ──────────────────────────────────────────────────────
+
+    function onNotificationCaptured(jsonStr) {
+        console.log("onNotificationCaptured called, length:", jsonStr.length);
+        try {
+            let data = JSON.parse(jsonStr);
+            if (!data.rawText) data.rawText = data.fullText || data.title || "";
+            notifLog.unshift(data);
+            if (notifLog.length > MAX_LOG) notifLog.pop();
+            renderLog();
+            Android.saveSettings("notif_log", JSON.stringify(notifLog));
+            console.log("Logged notification from", data.appName);
+        } catch(e) {
+            console.error("Parse error:", e);
+        }
+    }
+
+    function renderLog() {
+        let el = document.getElementById("notifLog");
+        if (!notifLog.length) {
+            el.innerHTML = '<div class="log-empty">No notifications captured yet.<br>Start the service to begin monitoring.</div>';
+            return;
+        }
+        let html = "";
+        notifLog.forEach(d => {
+            let time = d.timestamp ? new Date(d.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : "";
+            let displayText = d.rawText || d.fullText || d.title || "No content";
+            html += `
+            <div class="log-entry">
+                <div class="log-entry-meta">
+                    <span class="log-entry-app">${escapeHtml(d.appName || d.appPackage || "Unknown")}</span>
+                    <span class="log-entry-time">${escapeHtml(time)}</span>
+                </div>
+                <div class="log-entry-body">${escapeHtml(displayText)}</div>
+            </div>`;
+        });
+        el.innerHTML = html;
+    }
+
+    function clearLog() {
+        notifLog = [];
+        Android.saveSettings("notif_log", "[]");
+        renderLog();
+        Android.showToast("Log cleared");
+    }
+
+    function loadLog() {
+        let saved = Android.getSettings("notif_log");
+        if (saved && saved !== "null" && saved !== "") {
+            try { notifLog = JSON.parse(saved); } catch(e) { notifLog = []; }
+        }
+        renderLog();
+    }
+
+    // Initialize
+    window.onload = function() {
+        loadData();
+        loadLog();
+        Android.notifyWebViewReady();
+    };
+</script>
+</body>
+</html>
